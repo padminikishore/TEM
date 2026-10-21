@@ -18,7 +18,7 @@ jobs:
 
       # 2. Set up Node workspace to run diagnostic verification checks
       - name: Setup Node.js Runtime Environment
-        uses: actions/with-node@v4
+        uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: 'npm'
