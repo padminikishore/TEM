@@ -1,0 +1,69 @@
+name: Production CI/CD Integration Engine
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  build-and-package:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      # 1. Pull down copy of the source code
+      - name: Checkout Code Repository
+        uses: actions/checkout@v4
+
+      # 2. Set up Node workspace to run diagnostic verification checks
+      - name: Setup Node.js Runtime Environment
+        uses: actions/with-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      # 3. Clean install application dependencies
+      - name: Install Project Node Modules
+        run: npm ci
+
+      # 4. Check syntax layouts for coding errors
+      - name: Enforce Code Linter Verification
+        run: npm run lint --if-present
+
+      # 5. Log into GitHub Container Registry (GHCR) using system authentication tokens
+      - name: Authenticate to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 6. Build and push the tiny, production-ready multi-stage Docker image
+      - name: Build and Push Production Container Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/padminikishore/tem-engine:latest
+
+  remote-server-deployment:
+    needs: build-and-package
+    runs-on: ubuntu-latest
+    steps:
+      # 7. Secure Handshake with remote cloud server via automated SSH tunnel command protocols
+      - name: Deploy Production Stack via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ~/tem-engine
+            # Authenticate server instance to download new packages
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            # Pull down fresh code updates
+            git pull origin main
+            # Pull fresh image tags and restart background processes safely
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
