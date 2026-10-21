@@ -20,12 +20,12 @@ jobs:
       - name: Setup Node.js Runtime Environment
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: 24
+          cache: 'yarn'
 
       # 3. Clean install application dependencies
       - name: Install Project Node Modules
-        run: npm ci
+        run: yarn install --frozen-lockfile
 
       # 4. Check syntax layouts for coding errors
       - name: Enforce Code Linter Verification
