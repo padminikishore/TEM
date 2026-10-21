@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  # State-Aware Database Engine for keeping SAP environment inventory
+  tem-database:
+    image: postgres:15-alpine
+    container_name: tem_postgres_prod
+    restart: always
+    environment:
+      POSTGRES_DB: tem_management
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - tem-private-network
+
+  # Core Next.js UI Booking Calendar Application Node
+  tem-app:
+    image: ghcr.io/padminikishore/tem-engine:latest
+    container_name: tem_nextjs_prod
+    restart: always
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://${DB_USER}:${DB_PASSWORD}@tem-database:5432/tem_management?schema=public
+      NODE_ENV: production
+    depends_on:
+      - tem-database
+    networks:
+      - tem-private-network
+
+networks:
+  tem-private-network:
+    driver: bridge
+
+volumes:
+  postgres_prod_data:
